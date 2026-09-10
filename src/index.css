@@ -1,0 +1,668 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ink-0: #05070d;
+    --ink-1: #0a0e17;
+    --ink-2: #111726;
+    --ink-3: #1a2236;
+    --ink-4: #2a3653;
+    --moonlight: #f4e9c7;
+    --moonlight-dim: #c9b990;
+    --paper: #efe6d2;
+    --paper-dim: #b8ad94;
+    --red: #e0252e;
+    --red-bright: #ff3b46;
+    --red-deep: #7a1318;
+    --gold: #e9c46a;
+    --jade: #5fb39a;
+    --bone: #d9cdb2;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    background: var(--ink-0);
+  }
+
+  body {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    color: var(--paper);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .font-display {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.08em;
+  }
+  .font-jp {
+    font-family: 'Noto Serif JP', 'Sawarabi Mincho', serif;
+  }
+  .font-jp-light {
+    font-family: 'Sawarabi Mincho', 'Noto Serif JP', serif;
+  }
+}
+
+@layer utilities {
+  .text-paper {
+    color: var(--paper);
+  }
+  .text-paper-dim {
+    color: var(--paper-dim);
+  }
+  .text-moon {
+    color: var(--moonlight);
+  }
+  .text-red-accent {
+    color: var(--red-bright);
+  }
+  .text-gold {
+    color: var(--gold);
+  }
+  .bg-ink-1 {
+    background: var(--ink-1);
+  }
+  .bg-ink-2 {
+    background: var(--ink-2);
+  }
+  .bg-ink-3 {
+    background: var(--ink-3);
+  }
+  .border-ink {
+    border-color: rgba(239, 230, 210, 0.1);
+  }
+  .border-red-accent {
+    border-color: var(--red-deep);
+  }
+
+  .paper-texture {
+    background-image:
+      radial-gradient(rgba(239, 230, 210, 0.03) 1px, transparent 1px),
+      radial-gradient(rgba(239, 230, 210, 0.02) 1px, transparent 1px);
+    background-size: 3px 3px, 7px 7px;
+    background-position: 0 0, 1px 1px;
+  }
+
+  .seigaiha {
+    background-image: radial-gradient(
+      circle at 50% 100%,
+      transparent 22px,
+      rgba(239, 230, 210, 0.05) 22px,
+      rgba(239, 230, 210, 0.05) 24px,
+      transparent 24px,
+      transparent 32px,
+      rgba(239, 230, 210, 0.05) 32px,
+      rgba(239, 230, 210, 0.05) 34px,
+      transparent 34px
+    );
+    background-size: 40px 20px;
+  }
+
+  .asagasao {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(239, 230, 210, 0.04) 0,
+      rgba(239, 230, 210, 0.04) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+  }
+
+  .ink-clip {
+    clip-path: polygon(
+      0% 8%, 4% 0%, 96% 0%, 100% 10%,
+      100% 92%, 96% 100%, 4% 100%, 0% 90%
+    );
+  }
+
+  .text-stroke-red {
+    -webkit-text-stroke: 1.5px rgba(224, 37, 46, 0.55);
+  }
+
+  .vignette::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 50%,
+      rgba(5, 7, 13, 0.55) 100%
+    );
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--ink-4);
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ---------- Keyframe animations ---------- */
+
+@keyframes moon-glow {
+  0%, 100% {
+    box-shadow: 0 0 60px 20px rgba(244, 233, 199, 0.18), 0 0 120px 60px rgba(224, 37, 46, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 80px 30px rgba(244, 233, 199, 0.26), 0 0 160px 80px rgba(224, 37, 46, 0.14);
+  }
+}
+.anim-moon-glow { animation: moon-glow 6s ease-in-out infinite; }
+
+@keyframes drift-slow {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.anim-drift-slow { animation: drift-slow 60s linear infinite; }
+.anim-drift-slower { animation: drift-slow 120s linear infinite; }
+
+@keyframes fog-pan {
+  0% { transform: translateX(-10%); opacity: 0.5; }
+  50% { transform: translateX(10%); opacity: 0.8; }
+  100% { transform: translateX(-10%); opacity: 0.5; }
+}
+.anim-fog { animation: fog-pan 30s ease-in-out infinite; }
+.anim-fog-slow { animation: fog-pan 50s ease-in-out infinite; }
+
+@keyframes float-particle {
+  0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-110vh) translateX(20px) rotate(180deg); opacity: 0; }
+}
+
+@keyframes ember-rise {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(-90vh) translateX(-30px); opacity: 0; }
+}
+
+/* =========================================================================
+   NINJA CHARACTER ANIMATIONS
+   ========================================================================= */
+
+/* Idle breathing — subtle vertical bob + scale pulse */
+@keyframes ninja-breathe {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-1.5px) scaleY(1.015); }
+}
+.anim-ninja-breathe { animation: ninja-breathe 2.4s ease-in-out infinite; transform-origin: bottom center; }
+
+/* Hurt flash — shake + brightness burst */
+@keyframes ninja-hurt-flash {
+  0%, 100% { transform: translateX(0); filter: brightness(1); }
+  20% { transform: translateX(-5px); filter: brightness(3) drop-shadow(0 0 12px #ff3b46); }
+  40% { transform: translateX(5px); filter: brightness(2.5) drop-shadow(0 0 10px #ff3b46); }
+  60% { transform: translateX(-3px); filter: brightness(2) drop-shadow(0 0 8px #ff3b46); }
+  80% { transform: translateX(3px); filter: brightness(1.5); }
+}
+.anim-ninja-hurt-flash { animation: ninja-hurt-flash 0.3s ease-out; }
+
+/* Landing squash — quick vertical compress + recover */
+@keyframes ninja-land-squash {
+  0% { transform: scaleY(0.8) scaleX(1.15) translateY(4px); }
+  40% { transform: scaleY(0.85) scaleX(1.1) translateY(2px); }
+  100% { transform: scaleY(1) scaleX(1) translateY(0); }
+}
+.anim-ninja-land-squash { animation: ninja-land-squash 0.16s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; transform-origin: bottom center; }
+
+/* --- Scarf Physics --- */
+
+@keyframes scarf-wave {
+  0%, 100% { transform: rotate(-5deg) scaleX(1); }
+  50% { transform: rotate(-12deg) scaleX(0.92); }
+}
+.anim-scarf { animation: scarf-wave 1.3s ease-in-out infinite; transform-origin: 20px 4px; }
+
+@keyframes scarf-run {
+  0% { transform: rotate(-14deg) scaleX(1); }
+  50% { transform: rotate(-24deg) scaleX(0.86); }
+  100% { transform: rotate(-14deg) scaleX(1); }
+}
+.anim-scarf-run { animation: scarf-run 0.32s ease-in-out infinite; transform-origin: 20px 4px; }
+
+@keyframes scarf-dash {
+  0% { transform: rotate(-6deg) scaleX(1.3) translateX(-2px); }
+  100% { transform: rotate(-10deg) scaleX(1.45) translateX(-4px); }
+}
+.anim-scarf-dash { animation: scarf-dash 0.12s linear infinite alternate; transform-origin: 20px 4px; }
+
+@keyframes scarf-jump {
+  0% { transform: rotate(20deg) scaleY(0.88); }
+  100% { transform: rotate(28deg) scaleY(1); }
+}
+.anim-scarf-jump { animation: scarf-jump 0.28s ease-out infinite alternate; transform-origin: 20px 4px; }
+
+@keyframes scarf-fall {
+  0% { transform: rotate(-30deg) scaleY(1.1); }
+  100% { transform: rotate(-20deg) scaleY(0.94); }
+}
+.anim-scarf-fall { animation: scarf-fall 0.28s ease-out infinite alternate; transform-origin: 20px 4px; }
+
+/* --- Limb Run Cycles --- */
+
+@keyframes leg-run-left {
+  0%, 100% { transform: rotate(26deg); }
+  50% { transform: rotate(-28deg); }
+}
+@keyframes leg-run-right {
+  0%, 100% { transform: rotate(-28deg); }
+  50% { transform: rotate(26deg); }
+}
+.anim-leg-l { animation: leg-run-left 0.28s linear infinite; transform-origin: top center; }
+.anim-leg-r { animation: leg-run-right 0.28s linear infinite; transform-origin: top center; }
+
+@keyframes arm-run-left {
+  0%, 100% { transform: rotate(-32deg); }
+  50% { transform: rotate(32deg); }
+}
+@keyframes arm-run-right {
+  0%, 100% { transform: rotate(32deg); }
+  50% { transform: rotate(-32deg); }
+}
+.anim-arm-l { animation: arm-run-left 0.28s linear infinite; transform-origin: top center; }
+.anim-arm-r { animation: arm-run-right 0.28s linear infinite; transform-origin: top center; }
+
+/* --- Eyes --- */
+
+@keyframes blink-eyes {
+  0%, 88%, 100% { opacity: 1; transform: scaleY(1); }
+  93% { opacity: 0.2; transform: scaleY(0.08); }
+}
+.anim-eyes { animation: blink-eyes 3.2s ease-in-out infinite; }
+
+/* --- Combat Effects --- */
+
+/* Katana swing arc */
+@keyframes sword-swing {
+  0% { transform: rotate(-75deg) scale(0.5); }
+  25% { transform: rotate(-15deg) scale(1.1); }
+  55% { transform: rotate(55deg) scale(1); }
+  100% { transform: rotate(70deg) scale(0.85); }
+}
+.anim-sword-swing { animation: sword-swing 0.2s cubic-bezier(0.1, 0.9, 0.2, 1); transform-origin: 2px 3px; }
+
+/* Crescent slash visual arc */
+@keyframes crescent-slash-anim {
+  0% { transform: scale(0.15) rotate(-40deg); opacity: 0; }
+  20% { transform: scale(0.9) rotate(-12deg); opacity: 1; }
+  60% { transform: scale(1.1) rotate(8deg); opacity: 0.95; }
+  100% { transform: scale(1.2) rotate(22deg); opacity: 0; }
+}
+.anim-crescent-slash { animation: crescent-slash-anim 0.22s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; transform-origin: left center; }
+
+/* Hit spark burst */
+@keyframes hit-spark-anim {
+  0% { transform: scale(0.2) rotate(0deg); opacity: 1; }
+  40% { transform: scale(1.4) rotate(40deg); opacity: 1; }
+  100% { transform: scale(1.8) rotate(90deg); opacity: 0; }
+}
+.anim-hit-spark { animation: hit-spark-anim 0.18s ease-out forwards; }
+
+/* --- Landing Dust Particles --- */
+
+@keyframes landing-dust {
+  0% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(0.3) translateY(4px); }
+}
+.anim-landing-dust { animation: landing-dust 0.3s ease-out forwards; }
+
+@keyframes dust-puff-l {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0.5; }
+  100% { transform: translate(-12px, -6px) scale(1.3); opacity: 0; }
+}
+@keyframes dust-puff-r {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0.5; }
+  100% { transform: translate(12px, -6px) scale(1.3); opacity: 0; }
+}
+@keyframes dust-puff-c {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0.4; }
+  100% { transform: translate(0, -10px) scale(1.5); opacity: 0; }
+}
+.anim-dust-puff-l { animation: dust-puff-l 0.3s ease-out forwards; }
+.anim-dust-puff-r { animation: dust-puff-r 0.3s ease-out forwards; }
+.anim-dust-puff-c { animation: dust-puff-c 0.3s ease-out forwards; }
+
+@keyframes float-coin {
+  0%, 100% { transform: translateY(0) rotateY(0deg); }
+  50% { transform: translateY(-6px) rotateY(180deg); }
+}
+.anim-coin { animation: float-coin 1.6s ease-in-out infinite; }
+
+@keyframes checkpoint-pulse {
+  0%, 100% { transform: scaleY(1); opacity: 0.8; filter: drop-shadow(0 0 4px var(--jade)); }
+  50% { transform: scaleY(1.08); opacity: 1; filter: drop-shadow(0 0 12px var(--jade)); }
+}
+.anim-checkpoint { animation: checkpoint-pulse 1.8s ease-in-out infinite; transform-origin: bottom center; }
+
+@keyframes gate-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(233, 196, 106, 0.3), inset 0 0 20px rgba(233, 196, 106, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(233, 196, 106, 0.6), inset 0 0 30px rgba(233, 196, 106, 0.2); }
+}
+.anim-gate { animation: gate-glow 2.4s ease-in-out infinite; }
+
+@keyframes enemy-patrol {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(40px); }
+}
+
+@keyframes spirit-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+.anim-spirit { animation: spirit-bob 2.5s ease-in-out infinite; }
+
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(3px, -3px); }
+  60% { transform: translate(-2px, 3px); }
+  80% { transform: translate(2px, -1px); }
+}
+.anim-shake { animation: screen-shake 0.3s ease-in-out; }
+
+@keyframes damage-flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(224, 37, 46, 0.25); }
+}
+.anim-damage { animation: damage-flash 0.3s ease-in-out; }
+
+@keyframes damage-float {
+  0% { transform: translateY(0) scale(0.85); opacity: 1; }
+  40% { transform: translateY(-14px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-24px) scale(0.9); opacity: 0; }
+}
+.anim-damage-float { animation: damage-float 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.anim-fade-in { animation: fade-in 0.6s ease-out forwards; }
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-fade-up { animation: fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-fade-down { animation: fade-in-down 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.anim-scale-in { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.anim-page-enter { animation: page-enter 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes button-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 37, 46, 0.5); }
+  50% { box-shadow: 0 0 24px 4px rgba(224, 37, 46, 0.35); }
+}
+.anim-btn-glow { animation: button-glow 2.2s ease-in-out infinite; }
+
+@keyframes ink-spread {
+  from { transform: scale(0.6); opacity: 0.7; }
+  to { transform: scale(1.4); opacity: 0; }
+}
+.anim-ink-spread { animation: ink-spread 1.2s ease-out forwards; }
+
+@keyframes rank-reveal {
+  0% { opacity: 0; transform: scale(0.3) rotate(-12deg); }
+  60% { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.anim-rank { animation: rank-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes death-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(60px) rotate(90deg); opacity: 0; }
+}
+.anim-death { animation: death-fall 1.1s ease-in forwards; }
+
+@keyframes victory-rise {
+  0% { transform: translateY(40px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.anim-victory-rise { animation: victory-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.anim-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.anim-spin-slow { animation: spin-slow 20s linear infinite; }
+
+@keyframes stagger {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Blood Moon & Environmental Animations --- */
+@keyframes blood-moon-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 24px rgba(224, 37, 46, 0.6)) drop-shadow(0 0 60px rgba(122, 19, 24, 0.45));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 38px rgba(255, 59, 70, 0.8)) drop-shadow(0 0 90px rgba(224, 37, 46, 0.6));
+    transform: scale(1.015);
+  }
+}
+.anim-blood-moon { animation: blood-moon-pulse 4.5s ease-in-out infinite; transform-origin: center; }
+
+@keyframes moon-clouds-slow {
+  0% { transform: translateX(-40px); }
+  50% { transform: translateX(40px); }
+  100% { transform: translateX(-40px); }
+}
+.anim-moon-clouds { animation: moon-clouds-slow 32s ease-in-out infinite; }
+
+@keyframes lantern-flicker {
+  0%, 100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 8px rgba(233, 196, 106, 0.8)) drop-shadow(0 0 16px rgba(224, 37, 46, 0.5));
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.75;
+    filter: drop-shadow(0 0 5px rgba(233, 196, 106, 0.6)) drop-shadow(0 0 12px rgba(224, 37, 46, 0.35));
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(233, 196, 106, 1)) drop-shadow(0 0 22px rgba(224, 37, 46, 0.65));
+    transform: scale(1.04);
+  }
+  75% {
+    opacity: 0.82;
+    filter: drop-shadow(0 0 7px rgba(233, 196, 106, 0.7)) drop-shadow(0 0 14px rgba(224, 37, 46, 0.4));
+    transform: scale(0.98);
+  }
+}
+.anim-lantern-flicker { animation: lantern-flicker 2.6s ease-in-out infinite; }
+
+@keyframes banner-sway {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(3deg) skewX(1deg); }
+  70% { transform: rotate(-2.5deg) skewX(-1deg); }
+}
+.anim-banner-sway { animation: banner-sway 4.2s ease-in-out infinite; transform-origin: top center; }
+
+@keyframes fog-drift-horizontal {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-60px); }
+  100% { transform: translateX(0); }
+}
+.anim-fog-drift { animation: fog-drift-horizontal 24s ease-in-out infinite; }
+
+/* Volcanic embers and ash particles */
+@keyframes ember-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateY(-480px) translateX(var(--drift, 30px)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes ash-fall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.5;
+  }
+  80% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(500px) translateX(var(--drift, -25px)) rotate(160deg);
+    opacity: 0;
+  }
+}
+
+/* Slow-motion cinematic story location intro */
+@keyframes slow-motion-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.86) translateY(-14px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+.anim-slow-motion-enter {
+  animation: slow-motion-enter 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slow-motion-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08) translateY(-8px);
+    filter: blur(8px);
+  }
+}
+.anim-slow-motion-exit {
+  animation: slow-motion-exit 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Hell Pit Flames & Lava Animations */
+@keyframes hell-flame-flicker {
+  0% { transform: scaleY(1) scaleX(1) translateY(0); opacity: 0.85; }
+  25% { transform: scaleY(1.16) scaleX(0.92) translateY(-2px); opacity: 0.98; }
+  50% { transform: scaleY(0.92) scaleX(1.06) translateY(1px); opacity: 0.82; }
+  75% { transform: scaleY(1.24) scaleX(0.88) translateY(-4px); opacity: 1; }
+  100% { transform: scaleY(1) scaleX(1) translateY(0); opacity: 0.85; }
+}
+
+@keyframes lava-pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(255, 43, 54, 0.8)) drop-shadow(0 0 16px rgba(255, 90, 30, 0.5));
+    opacity: 0.9;
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(255, 43, 54, 1)) drop-shadow(0 0 28px rgba(255, 120, 40, 0.8));
+    opacity: 1;
+  }
+}
+
+@keyframes pit-smoke-rise {
+  0% { transform: translateY(0) scale(0.85); opacity: 0; }
+  30% { opacity: 0.4; }
+  70% { opacity: 0.25; }
+  100% { transform: translateY(-40px) scale(1.35); opacity: 0; }
+}
+
+@keyframes pit-ember-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 0.8; }
+  100% { transform: translateY(-55px) translateX(var(--drift, 8px)) scale(0.2); opacity: 0; }
+}
+
+@keyframes blood-rain-fall {
+  0% {
+    transform: translateY(-80px) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--rain-op, 0.85);
+  }
+  85% {
+    opacity: var(--rain-op, 0.85);
+  }
+  100% {
+    transform: translateY(calc(100vh + 100px)) translateX(var(--rain-drift, -45px));
+    opacity: 0;
+  }
+}
+
+@keyframes blood-splash-ripple {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
