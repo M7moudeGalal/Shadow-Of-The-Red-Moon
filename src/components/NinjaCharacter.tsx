@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { AnimState, NinjaSkill } from '@/game/types';
+import { getImage } from '@/game/assetCache';
 
 /**
  * SHADOW OF THE RED MOON — NINJA PLAYER CHARACTER
@@ -14,10 +15,10 @@ import type { AnimState, NinjaSkill } from '@/game/types';
  * - ATTACK Animation (8 frames, 50ms cadence, fast responsive strike)
  * - DOWN ATTACK Animation (6 frames, 50ms cadence, aerial down thrust)
  * - DAMAGE Animation (4 frames, 65ms cadence, single-play)
- * - DEATH Animation (6 frames, 100ms cadence, holds death_06 permanently)
+ * - DEATH Animation (6 frames, 100ms cadence, single-play)
  * 
  * Asset Paths:
- * Master:      /assets/sprites/player/master.png
+ * Master:      /assets/sprites/player/ninja_master.png
  * Idle:        /assets/sprites/player/idle/idle_01.png ... idle_06.png
  * Run:         /assets/sprites/player/run/run_01.png ... run_08.png
  * Jump:        /assets/sprites/player/jump/jump_01.png ... jump_06.png
@@ -33,7 +34,7 @@ import type { AnimState, NinjaSkill } from '@/game/types';
  * Visual Canvas: 44px width × 64px height (Ground baseline anchored at bottom)
  */
 
-export const MASTER_PLAYER_REFERENCE = '/assets/sprites/player/master.png' as const;
+export const MASTER_PLAYER_REFERENCE = '/assets/sprites/player/ninja_master.png' as const;
 
 export const IDLE_FRAMES = [
   '/assets/sprites/player/idle/idle_01.png',
@@ -284,47 +285,9 @@ export const PARRY_STATIONARY_FRAME = '/assets/player/parry/parry16.png' as cons
 // Deterministic mapping: 12 active physics dash frames -> 6 visual dash frames
 const DASH_FRAME_MAP: readonly number[] = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
 
-// Preload all sprite frames once on module load
-if (typeof window !== 'undefined') {
-  [
-    MASTER_PLAYER_REFERENCE,
-    ...IDLE_FRAMES,
-    ...RUN_FRAMES,
-    ...JUMP_FRAMES,
-    ...DOUBLE_JUMP_FRAMES,
-    ...FALL_FRAMES,
-    ...LAND_FRAMES,
-    ...DASH_FRAMES,
-    ...ATTACK_FRAMES,
-    ...DOWN_ATTACK_FRAMES,
-    ...CRIMSON_SLASH_COMBO_FRAMES,
-    ...CRIMSON_BLADE_WAVE_FRAMES,
-    ...BLOOD_SPIN_SLASH_FRAMES,
-    ...SHADOW_DASH_STRIKE_FRAMES,
-    ...AERIAL_KICK_FRAMES,
-    ...DAMAGE_FRAMES,
-    ...DEATH_FRAMES,
-    ...THROW_FRAMES,
-    ...SHURIKEN_FRAMES,
-    ...PARRY_FRAMES,
-    SHURIKEN_HIT_EFFECT,
-    NINJA_RESPAWN_EFFECT,
-    PARRY_EFFECT,
-    '/assets/sprites/player/effects/slash_01.png',
-    '/assets/sprites/player/effects/slash_02.png',
-    '/assets/sprites/player/effects/slash_03.png',
-    '/assets/sprites/player/effects/impact_01.png',
-    '/assets/sprites/player/effects/impact_02.png',
-    '/assets/sprites/player/effects/dust_01.png',
-    '/assets/sprites/player/effects/dust_02.png',
-  ].forEach((src) => {
-    const img = new Image();
-    img.src = src;
-  });
-}
-
 export interface NinjaCharacterProps {
   anim?: AnimState;
+  animFrame?: number;
   facing?: 1 | -1;
   size?: number;
   dashTimer?: number;
@@ -335,24 +298,29 @@ export interface NinjaCharacterProps {
   skillTimer?: number;
   skillFrame?: number;
   attackHoldTimer?: number;
+  attackFrame?: number;
+  throwFrame?: number;
+  landingFrame?: number;
+  hurtFrame?: number;
 }
 
 const IDLE_FRAME_DURATION_MS = 120;        // 120ms per frame
 const RUN_FRAME_DURATION_MS = 90;          // 90ms per frame
 const JUMP_FRAME_DURATION_MS = 95;         // 95ms per frame
-const DOUBLE_JUMP_FRAME_DURATION_MS = 50;  // 50ms per frame (24 frames total ~1.2s acrobatic flip)
+const DOUBLE_JUMP_FRAME_DURATION_MS = 50;  // 50ms per frame
 const FALL_FRAME_DURATION_MS = 100;        // 100ms per frame
 const LAND_FRAME_DURATION_MS = 75;         // 75ms per frame
 const ATTACK_FRAME_DURATION_MS = 50;       // 50ms per frame
 const DOWN_ATTACK_FRAME_DURATION_MS = 50;  // 50ms per frame
-const SKILL_FRAME_DURATION_MS = 45;        // 45ms per frame for new attack skills
-const THROW_FRAME_DURATION_MS = 22;        // 22ms per frame (20 frames total ~440ms single cast)
-const PARRY_FRAME_DURATION_MS = 16;        // 16ms per frame (24 frames total ~384ms single parry)
+const SKILL_FRAME_DURATION_MS = 45;        // 45ms per frame
+const THROW_FRAME_DURATION_MS = 22;        // 22ms per frame
+const PARRY_FRAME_DURATION_MS = 16;        // 16ms per frame
 const DAMAGE_FRAME_DURATION_MS = 65;       // 65ms per frame
 const DEATH_FRAME_DURATION_MS = 100;       // 100ms per frame
 
 export function NinjaCharacter({
   anim = 'idle',
+  animFrame,
   facing = 1,
   size = 1,
   dashTimer = 0,
@@ -363,8 +331,13 @@ export function NinjaCharacter({
   skillTimer = 0,
   skillFrame,
   attackHoldTimer = 0,
+  attackFrame,
+  throwFrame,
+  landingFrame,
+  hurtFrame,
 }: NinjaCharacterProps) {
   const [frameIndex, setFrameIndex] = useState(0);
+  const effectiveFrame = animFrame !== undefined ? animFrame : frameIndex;
 
   const isDead = anim === 'dead';
   const isDamage = anim === 'hurt';
@@ -451,7 +424,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'jump') {
-      // Advance 01 -> 06, hold last frame while rising
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < JUMP_FRAMES.length - 1) {
@@ -464,7 +436,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'double_jump') {
-      // Advance double-jump1 -> double-jump24 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < DOUBLE_JUMP_FRAMES.length - 1) {
@@ -477,7 +448,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'fall') {
-      // Advance 01 -> 04, hold fall_04 until landing
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < FALL_FRAMES.length - 1) {
@@ -490,7 +460,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'land') {
-      // Advance land_01 -> land_02 -> land_04 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < LAND_FRAMES.length - 1) {
@@ -503,7 +472,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'attack') {
-      // Advance attack_01 -> attack_08 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < ATTACK_FRAMES.length - 1) {
@@ -516,7 +484,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'down_attack') {
-      // Advance down_01 -> down_06 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < DOWN_ATTACK_FRAMES.length - 1) {
@@ -564,7 +531,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'throw') {
-      // Advance throw_01 -> throw_20 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < THROW_FRAMES.length - 1) {
@@ -577,7 +543,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'parry') {
-      // Advance parry1 -> parry24 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < PARRY_FRAMES.length - 1) {
@@ -590,7 +555,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'damage') {
-      // Advance damage_01 -> damage_04 (single play, non-looping)
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < DAMAGE_FRAMES.length - 1) {
@@ -603,7 +567,6 @@ export function NinjaCharacter({
     }
 
     if (currentMode === 'death') {
-      // Advance death_01 -> death_06, hold death_06 permanently
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
           if (prev < DEATH_FRAMES.length - 1) {
@@ -614,7 +577,7 @@ export function NinjaCharacter({
       }, DEATH_FRAME_DURATION_MS);
       return () => window.clearInterval(interval);
     }
-  }, [currentMode]);
+  }, [currentMode, animFrame]);
 
   const flip = facing === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
@@ -624,30 +587,27 @@ export function NinjaCharacter({
   let maxWidth: string;
 
   if (isDead) {
-    const clampedIndex = Math.min(frameIndex, DEATH_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, DEATH_FRAMES.length - 1);
     currentSrc = DEATH_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '64px';
   } else if (isDamage) {
-    const clampedIndex = Math.min(frameIndex, DAMAGE_FRAMES.length - 1);
+    const clampedIndex = hurtFrame !== undefined ? Math.min(hurtFrame, DAMAGE_FRAMES.length - 1) : Math.min(effectiveFrame, DAMAGE_FRAMES.length - 1);
     currentSrc = DAMAGE_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '56px';
   } else if (isParry) {
     if (parryAnimTimer > 0) {
-      // Dynamic parry deflection swing when an enemy attack is intercepted!
       const elapsed = Math.min(23, Math.max(0, 24 - parryAnimTimer));
       currentSrc = PARRY_FRAMES[elapsed];
       spriteHeight = '56px';
       maxWidth = '72px';
     } else {
-      // Steady guard stance with sword held stationary while defending
       currentSrc = PARRY_STATIONARY_FRAME;
       spriteHeight = '56px';
       maxWidth = '64px';
     }
   } else if (isDash) {
-    // Deterministic 1:1 synchronization with the engine's 12-frame dash countdown (dashTimer: 12 -> 1)
     let dashIdx: number;
     if (dashTimer > 0) {
       const elapsedPhysicsFrame = Math.min(11, Math.max(0, 12 - dashTimer));
@@ -659,79 +619,86 @@ export function NinjaCharacter({
     spriteHeight = '47px';
     maxWidth = '56px';
   } else if (isCrimsonSlashCombo) {
-    const idx = skillFrame !== undefined ? Math.min(skillFrame, CRIMSON_SLASH_COMBO_FRAMES.length - 1) : Math.min(frameIndex, CRIMSON_SLASH_COMBO_FRAMES.length - 1);
+    const idx = skillFrame !== undefined ? Math.min(skillFrame, CRIMSON_SLASH_COMBO_FRAMES.length - 1) : Math.min(effectiveFrame, CRIMSON_SLASH_COMBO_FRAMES.length - 1);
     currentSrc = CRIMSON_SLASH_COMBO_FRAMES[idx];
     spriteHeight = '68px';
     maxWidth = '116px';
   } else if (isCrimsonBladeWave) {
-    const idx = skillFrame !== undefined ? Math.min(skillFrame, CRIMSON_BLADE_WAVE_FRAMES.length - 1) : Math.min(frameIndex, CRIMSON_BLADE_WAVE_FRAMES.length - 1);
+    const idx = skillFrame !== undefined ? Math.min(skillFrame, CRIMSON_BLADE_WAVE_FRAMES.length - 1) : Math.min(effectiveFrame, CRIMSON_BLADE_WAVE_FRAMES.length - 1);
     currentSrc = CRIMSON_BLADE_WAVE_FRAMES[idx];
     spriteHeight = '70px';
     maxWidth = '125px';
   } else if (isBloodSpinSlash) {
-    const idx = skillFrame !== undefined ? Math.min(skillFrame, BLOOD_SPIN_SLASH_FRAMES.length - 1) : Math.min(frameIndex, BLOOD_SPIN_SLASH_FRAMES.length - 1);
+    const idx = skillFrame !== undefined ? Math.min(skillFrame, BLOOD_SPIN_SLASH_FRAMES.length - 1) : Math.min(effectiveFrame, BLOOD_SPIN_SLASH_FRAMES.length - 1);
     currentSrc = BLOOD_SPIN_SLASH_FRAMES[idx];
     spriteHeight = '70px';
     maxWidth = '120px';
   } else if (isShadowDashStrike) {
-    const idx = skillFrame !== undefined ? Math.min(skillFrame, SHADOW_DASH_STRIKE_FRAMES.length - 1) : Math.min(frameIndex, SHADOW_DASH_STRIKE_FRAMES.length - 1);
+    const idx = skillFrame !== undefined ? Math.min(skillFrame, SHADOW_DASH_STRIKE_FRAMES.length - 1) : Math.min(effectiveFrame, SHADOW_DASH_STRIKE_FRAMES.length - 1);
     currentSrc = SHADOW_DASH_STRIKE_FRAMES[idx];
     spriteHeight = '68px';
     maxWidth = '120px';
   } else if (isAerialKick) {
-    const idx = skillFrame !== undefined ? Math.min(skillFrame, AERIAL_KICK_FRAMES.length - 1) : Math.min(frameIndex, AERIAL_KICK_FRAMES.length - 1);
+    const idx = skillFrame !== undefined ? Math.min(skillFrame, AERIAL_KICK_FRAMES.length - 1) : Math.min(effectiveFrame, AERIAL_KICK_FRAMES.length - 1);
     currentSrc = AERIAL_KICK_FRAMES[idx];
     spriteHeight = '72px';
     maxWidth = '100px';
   } else if (isDownAttack) {
-    const clampedIndex = Math.min(frameIndex, DOWN_ATTACK_FRAMES.length - 1);
+    const clampedIndex = attackFrame !== undefined ? Math.min(attackFrame, DOWN_ATTACK_FRAMES.length - 1) : Math.min(effectiveFrame, DOWN_ATTACK_FRAMES.length - 1);
     currentSrc = DOWN_ATTACK_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '64px';
   } else if (isAttack) {
-    const clampedIndex = Math.min(frameIndex, ATTACK_FRAMES.length - 1);
+    const clampedIndex = attackFrame !== undefined ? Math.min(attackFrame, ATTACK_FRAMES.length - 1) : Math.min(effectiveFrame, ATTACK_FRAMES.length - 1);
     currentSrc = ATTACK_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '64px';
   } else if (isThrow) {
-    const clampedIndex = Math.min(frameIndex, THROW_FRAMES.length - 1);
+    const clampedIndex = throwFrame !== undefined ? Math.min(throwFrame, THROW_FRAMES.length - 1) : Math.min(effectiveFrame, THROW_FRAMES.length - 1);
     currentSrc = THROW_FRAMES[clampedIndex];
     spriteHeight = '56px';
     maxWidth = '64px';
   } else if (isLanding) {
-    const clampedIndex = Math.min(frameIndex, LAND_FRAMES.length - 1);
+    const clampedIndex = landingFrame !== undefined ? Math.min(landingFrame, LAND_FRAMES.length - 1) : Math.min(effectiveFrame, LAND_FRAMES.length - 1);
     currentSrc = LAND_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '56px';
   } else if (isDoubleJump) {
     const frame = doubleJumpFrame !== undefined
       ? Math.min(Math.max(0, doubleJumpFrame), DOUBLE_JUMP_FRAMES.length - 1)
-      : Math.min(frameIndex, DOUBLE_JUMP_FRAMES.length - 1);
+      : Math.min(effectiveFrame, DOUBLE_JUMP_FRAMES.length - 1);
     currentSrc = DOUBLE_JUMP_FRAMES[frame];
     spriteHeight = '56px';
     maxWidth = '70px';
   } else if (isFalling) {
-    const clampedIndex = Math.min(frameIndex, FALL_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, FALL_FRAMES.length - 1);
     currentSrc = FALL_FRAMES[clampedIndex];
     spriteHeight = '47px';
     maxWidth = '56px';
   } else if (isJumping) {
-    const clampedIndex = Math.min(frameIndex, JUMP_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, JUMP_FRAMES.length - 1);
     currentSrc = JUMP_FRAMES[clampedIndex];
     spriteHeight = '52px';
     maxWidth = '56px';
   } else if (isRunning) {
-    currentSrc = RUN_FRAMES[frameIndex % RUN_FRAMES.length];
+    currentSrc = RUN_FRAMES[effectiveFrame % RUN_FRAMES.length];
     spriteHeight = '42px';
     maxWidth = '64px';
   } else if (isIdle) {
-    currentSrc = IDLE_FRAMES[frameIndex % IDLE_FRAMES.length];
+    currentSrc = IDLE_FRAMES[effectiveFrame % IDLE_FRAMES.length];
     spriteHeight = '60px';
     maxWidth = '56px';
   } else {
     currentSrc = IDLE_FRAMES[0];
     spriteHeight = '60px';
     maxWidth = '56px';
+  }
+
+  // Consistent character scale calculation relative to raw image pixel dimensions
+  const cachedImg = getImage(currentSrc);
+  if (cachedImg && cachedImg.naturalHeight > 0 && !isDash) {
+    spriteHeight = `${Math.round(cachedImg.naturalHeight * 0.2941)}px`;
+    maxWidth = `${Math.round(cachedImg.naturalWidth * 0.2941) + 8}px`;
   }
 
   return (

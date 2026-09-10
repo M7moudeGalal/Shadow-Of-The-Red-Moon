@@ -28,6 +28,7 @@ import type {
 import { createLevel, LEVEL_WIDTH, GROUND_Y } from './level';
 import { soundEffects } from './soundEffects';
 import { titleMusic } from './titleMusic';
+import { preloadAllGameAssets } from './assetCache';
 import { loadStoryFlags, saveStoryFlags, resetStoryFlags } from './storyFlags';
 
 export const OPENING_CUTSCENE_DIALOGUES: CinematicDialogueLine[] = [
@@ -543,6 +544,9 @@ export function useGameEngine(
   const totalBatKillsRef = useRef(0);
   const trophyNotificationRef = useRef<TrophyNotification | null>(null);
   const nextNotificationIdRef = useRef(1);
+  const gameTickRef = useRef(0);
+  const attackHitRegisteredRef = useRef(false);
+  const attackSlashSpawnedRef = useRef(false);
   const cameraZoomRef = useRef(1.0);
   const portalPromptRef = useRef<PortalPromptState | null>(null);
   const portalCooldownRef = useRef<number>(0);
@@ -1193,6 +1197,7 @@ export function useGameEngine(
 
   // Game loop with rock-solid fixed-timestep accumulator for silky smooth 60fps
   useEffect(() => {
+    preloadAllGameAssets();
     if (storyLocationRef.current === 'yunami-jigoku' && !storyCinematicRef.current.isComplete) {
       initOpeningCutscene();
     }
@@ -1719,8 +1724,9 @@ export function useGameEngine(
     const p = playerRef.current;
     const inp = inputRef.current;
 
-    // Timer
+    // Timer & Game Loop Tick Counter
     timeRef.current += 1 / 60;
+    gameTickRef.current += 1;
 
     // Stamina automatic recharge: 0 to 100 in 5.0 seconds
     if (p.stamina < p.maxStamina) {
@@ -2220,7 +2226,7 @@ export function useGameEngine(
         normalAttackComboCountRef.current = (normalAttackComboCountRef.current % 3) + 1;
         normalAttackComboTimerRef.current = 34;
       }
-      performAttack();
+      initiateAttack();
       inp.attackPressed = false;
       attackBufferTimerRef.current = 0;
     }
@@ -2983,6 +2989,77 @@ export function useGameEngine(
     else if (Math.abs(p.vx) > 0.5) p.anim = 'running';
     else p.anim = 'idle';
 
+    // --- Attack Active Window & Frame Computation ---
+    if (p.attackTimer > 0) {
+      const isDownAttack = !p.onGround;
+      const elapsed = ATTACK_DURATION - p.attackTimer;
+      if (isDownAttack) {
+        p.attackFrame = Math.min(5, Math.floor(elapsed / 2.33));
+        // Active strike apex on frames 1..3
+        if (p.attackFrame >= 1 && p.attackFrame <= 3) {
+          if (!attackSlashSpawnedRef.current) {
+            attackSlashSpawnedRef.current = true;
+            spawnEffect('down_slash', p.x + p.w / 2 - 32, p.y + p.h - 8, p.facing, 3);
+          }
+          if (!attackHitRegisteredRef.current) {
+            executeAttackHitCheck(true);
+          }
+        }
+      } else {
+        p.attackFrame = Math.min(7, Math.floor(elapsed / 1.75));
+        // Active strike apex on frames 2..4
+        if (p.attackFrame >= 2 && p.attackFrame <= 4) {
+          if (!attackSlashSpawnedRef.current) {
+            attackSlashSpawnedRef.current = true;
+            const comboStep = normalAttackComboCountRef.current || 1;
+            if (comboStep === 3) {
+              shakeRef.current = Math.max(shakeRef.current, 8);
+              soundEffects.playSlash();
+            } else {
+              shakeRef.current = Math.max(shakeRef.current, 6);
+            }
+            spawnEffect('slash', p.facing === 1 ? p.x + p.w - 14 : p.x - 50, p.y - 12, p.facing, 3);
+          }
+          if (!attackHitRegisteredRef.current) {
+            executeAttackHitCheck(false);
+          }
+        }
+      }
+    } else {
+      p.attackFrame = undefined;
+      attackHitRegisteredRef.current = false;
+      attackSlashSpawnedRef.current = false;
+    }
+
+    // --- Deterministic Player Animation Frame Calculation from Game Loop Tick ---
+    const tick = gameTickRef.current;
+    if (p.throwTimer > 0) {
+      p.throwFrame = Math.min(4, Math.floor((16 - p.throwTimer) / 3.2));
+    } else {
+      p.throwFrame = undefined;
+    }
+
+    if (landingTimerRef.current > 0) {
+      p.landingFrame = Math.min(2, Math.floor((8 - landingTimerRef.current) / 2.7));
+    } else {
+      p.landingFrame = undefined;
+    }
+
+    if (p.anim === 'hurt') {
+      p.hurtFrame = Math.min(3, Math.floor((INVULN_DURATION - p.invuln) / 4));
+    } else {
+      p.hurtFrame = undefined;
+    }
+
+    if (p.anim === 'idle') p.animFrame = Math.floor(tick / 6) % 6;
+    else if (p.anim === 'running') p.animFrame = Math.floor(tick / 4) % 8;
+    else if (p.anim === 'jumping') p.animFrame = Math.min(5, Math.max(0, Math.floor((p.vy + 12) / 2.4)));
+    else if (p.anim === 'falling') p.animFrame = Math.floor(tick / 5) % 4;
+    else if (p.anim === 'dashing') p.animFrame = Math.min(5, Math.floor((14 - p.dashTimer) / 2.4));
+    else if (p.anim === 'dead') p.animFrame = Math.min(5, Math.floor(p.deathTimer / 8));
+    else if (p.anim === 'parry') p.animFrame = Math.min(3, Math.floor((12 - p.parryAnimTimer) / 3));
+    else p.animFrame = undefined;
+
     // Running audio effect (Fast_Running ninja sfx)
     if (p.anim === 'running' && p.onGround && p.alive && statusRef.current === 'playing' && !inDeathCinematic && !inBossIntro) {
       soundEffects.startRunning();
@@ -3152,14 +3229,19 @@ export function useGameEngine(
     }
   }
 
-  function performAttack() {
+  function initiateAttack() {
     soundEffects.playAttack();
     const p = playerRef.current;
     p.isDoubleJumping = false;
     p.doubleJumpTimer = 0;
     p.doubleJumpFrame = undefined;
-    const isDownAttack = !p.onGround;
+    p.attackFrame = 0;
+    attackHitRegisteredRef.current = false;
+    attackSlashSpawnedRef.current = false;
+  }
 
+  function executeAttackHitCheck(isDownAttack: boolean) {
+    const p = playerRef.current;
     const comboStep = normalAttackComboCountRef.current || 1;
     let attackDamage = 1.0;
     let attackKnockback = 4.0;
@@ -3172,43 +3254,38 @@ export function useGameEngine(
       attackKnockback = 6.0;
       attackRange = ATTACK_RANGE + 6;
       hitStopDuration = HIT_STOP_COMBO_FINISHER;
-      shakeRef.current = Math.max(shakeRef.current, 8);
-      soundEffects.playSlash();
-    } else {
-      shakeRef.current = Math.max(shakeRef.current, 6);
     }
 
     let attackBox: Rect;
     if (isDownAttack) {
-      p.anim = 'down_attacking';
       attackBox = {
         x: p.x - 4,
         y: p.y + p.h - 6,
         w: p.w + 8,
         h: 38,
       };
-      spawnEffect('down_slash', p.x + p.w / 2 - 32, p.y + p.h - 8, p.facing, 3);
     } else {
-      p.anim = 'attacking';
       attackBox = {
         x: p.facing === 1 ? p.x + p.w - 4 : p.x - attackRange + 4,
         y: p.y + 4,
         w: attackRange,
         h: p.h - 8,
       };
-      spawnEffect('slash', p.facing === 1 ? p.x + p.w - 14 : p.x - 50, p.y - 12, p.facing, 3);
     }
 
+    let hitConnected = false;
     for (const e of enemiesRef.current) {
       if (!e.alive) continue;
       // Hanzo Execution Blow during HANZO_EXECUTION_PENDING:
       if (e.type === 'hanzo' && storyCinematicRef.current.phase === 'hanzo_execution_pending') {
         triggerHanzoExecutionBlow(e, p.facing);
+        hitConnected = true;
         continue;
       }
       // Hanzo cannot be attacked during the boss intro sequence, death animation, or when dead
       if (e.type === 'hanzo' && (!bossIntroTriggeredRef.current || bossIntroTimerRef.current > 0 || e.state === 'death' || e.state === 'dead')) continue;
       if (rectsOverlap(attackBox, e)) {
+        hitConnected = true;
         hitStopTimerRef.current = e.type === 'hanzo' ? HIT_STOP_BOSS_HIT : hitStopDuration;
         if (e.type === 'hanzo') {
           triggerHanzoHit(e, p.facing);
@@ -3266,6 +3343,10 @@ export function useGameEngine(
           }
         }
       }
+    }
+
+    if (hitConnected) {
+      attackHitRegisteredRef.current = true;
     }
   }
 
@@ -3614,6 +3695,11 @@ export function useGameEngine(
       if (!e.alive) {
         e.deadTimer += 1;
         e.state = 'dead';
+        if (e.type === 'samurai') {
+          e.animFrame = Math.min(5, Math.floor(e.deadTimer / 6));
+        } else if (e.type === 'spirit' || (e.type as string) === 'corrupted_bat') {
+          e.animFrame = Math.min(11, Math.floor(e.deadTimer / 5));
+        }
 
         // Corrupted Bat / Wyvern 6-second respawn loop across the skies
         if (e.type === 'spirit' || (e.type as string) === 'corrupted_bat') {
@@ -3937,6 +4023,19 @@ export function useGameEngine(
             e.vx = 0;
           }
         }
+
+        const samState = e.state as string;
+        if (samState === 'attack') {
+          e.attackFrame = Math.min(7, Math.floor((24 - e.attackTimer) / 3));
+        } else {
+          e.attackFrame = undefined;
+          if (samState === 'idle') e.animFrame = Math.floor(gameTickRef.current / 7) % 5;
+          else if (samState === 'patrol') e.animFrame = Math.floor(gameTickRef.current / 6) % 5;
+          else if (samState === 'chase') e.animFrame = Math.floor(gameTickRef.current / 5) % 6;
+          else if (samState === 'jump') e.animFrame = Math.min(7, Math.floor(gameTickRef.current / 5) % 8);
+          else if (samState === 'hurt') e.animFrame = Math.min(3, Math.floor((20 - e.hurtCooldown) / 5));
+          else if (samState === 'guard') e.animFrame = 0;
+        }
       } else if (e.type === 'spirit' || (e.type as string) === 'corrupted_bat') {
         // Priority 0: Manifesting / Appear animation phase after spawn
         if (e.spawnTimer && e.spawnTimer > 0) {
@@ -4122,6 +4221,14 @@ export function useGameEngine(
           if (e.x > level.width - 50) { e.x = level.width - 50; e.facing = -1; }
           if (e.y < 60) e.y = 60;
         }
+
+        const batState = e.state as string;
+        if (batState === 'spawn') e.animFrame = Math.min(5, Math.floor((36 - (e.spawnTimer || 0)) / 6));
+        else if (batState === 'hurt') e.animFrame = Math.min(3, Math.floor((20 - e.hurtCooldown) / 5));
+        else if (batState === 'dive') e.animFrame = Math.floor(gameTickRef.current / 4) % 6;
+        else if (batState === 'attack' || batState === 'claw_attack') e.animFrame = Math.floor(gameTickRef.current / 4) % 4;
+        else if (batState === 'fly' || batState === 'chase') e.animFrame = Math.floor(gameTickRef.current / 4) % 4;
+        else e.animFrame = Math.floor(gameTickRef.current / 6) % 4;
       } else if (e.type === 'hanzo') {
         // STATE 0: DEATH STATE & CINEMATIC PROGRESSION (ABSOLUTE PRIORITY)
         if (e.state === 'death') {
@@ -4885,6 +4992,18 @@ export function useGameEngine(
         e.x += e.vx;
         if (e.x < 6110) { e.x = 6110; e.vx = 0; }
         if (e.x > 7460) { e.x = 7460; e.vx = 0; }
+
+        if (e.state === 'spin_attack') {
+          e.attackFrame = Math.min(7, Math.floor((20 - e.attackTimer) / 2.5));
+        } else if (e.state === 'rising_attack') {
+          e.attackFrame = Math.min(6, Math.floor((20 - e.attackTimer) / 3));
+        } else {
+          e.attackFrame = undefined;
+          if (e.state === 'idle') e.animFrame = Math.floor(gameTickRef.current / 6) % 8;
+          else if (e.state === 'chase' || e.state === 'patrol') e.animFrame = Math.floor(gameTickRef.current / 4) % 11;
+          else if (e.state === 'dash') e.animFrame = Math.floor(gameTickRef.current / 3) % 12;
+          else if (e.state === 'teleport_attack') e.animFrame = Math.min(14, Math.floor(gameTickRef.current / 3) % 15);
+        }
       }
     }
   }

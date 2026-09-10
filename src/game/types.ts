@@ -1,8 +1,8 @@
 // Game type definitions & Master Character References
-export const MASTER_SAMURAI_REFERENCE = '/assets/sprites/enemies/samurai/master.png' as const;
+export const MASTER_SAMURAI_REFERENCE = '/assets/sprites/enemies/master_samurai.png' as const;
 export const MASTER_BAT_REFERENCE = '/assets/sprites/enemies/corrupted-bat/master.png' as const;
 export const MASTER_HANZO_REFERENCE = '/assets/sprites/enemies/hanzo/master.png' as const;
-export const MASTER_PLAYER_REFERENCE = '/assets/sprites/player/master.png' as const;
+export const MASTER_PLAYER_REFERENCE = '/assets/sprites/player/ninja_master.png' as const;
 
 export type AnimState =
   | 'idle'
@@ -206,6 +206,8 @@ export interface Enemy {
   jumpTimer?: number;
   damageFrame?: number;
   deathFrame?: number;
+  attackFrame?: number;
+  animFrame?: number;
   // Hanzo Master Combo properties
   comboActive?: boolean;
   comboStep?: 'spin' | 'rising' | 'dash' | 'teleport' | 'teleport_to_spin' | 'rising_to_teleport' | 'spin_to_rising';
@@ -278,6 +280,11 @@ export interface PlayerState {
   activeSkill?: NinjaSkill;
   skillTimer?: number;
   skillFrame?: number;
+  animFrame?: number;
+  attackFrame?: number;
+  throwFrame?: number;
+  landingFrame?: number;
+  hurtFrame?: number;
   attackHoldTimer?: number;
   comboCount?: number;
   comboTimer?: number;

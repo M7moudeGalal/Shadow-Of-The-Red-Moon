@@ -3454,6 +3454,8 @@ function EnemyView({
               state={enemy.state as any}
               facing={enemy.facing}
               isHurt={isHurt}
+              animFrame={enemy.animFrame}
+              attackFrame={enemy.attackFrame}
             />
           </div>
         ) : enemy.type === 'hanzo' ? (
@@ -3504,6 +3506,8 @@ function EnemyView({
               telegraph={enemy.telegraph}
               telegraphTimer={enemy.telegraphTimer}
               telegraphMaxTimer={enemy.telegraphMaxTimer}
+              animFrame={enemy.animFrame}
+              attackFrame={enemy.attackFrame}
             />
           </div>
         ) : (
@@ -3514,6 +3518,7 @@ function EnemyView({
               isMoving={Math.hypot(enemy.vx, enemy.vy) > 0.8 || enemy.state === 'chase'}
               facing={enemy.facing}
               isHurt={isHurt}
+              animFrame={enemy.animFrame}
             />
           </div>
         )}
@@ -3557,6 +3562,11 @@ function PlayerView({ player }: { player: ReturnType<typeof useGameEngine>['rend
           skillTimer={player.skillTimer}
           skillFrame={player.skillFrame}
           attackHoldTimer={player.attackHoldTimer}
+          animFrame={player.animFrame}
+          attackFrame={player.attackFrame}
+          throwFrame={player.throwFrame}
+          landingFrame={player.landingFrame}
+          hurtFrame={player.hurtFrame}
           size={1}
         />
       </div>
@@ -3803,6 +3813,7 @@ function HanzoGhostView({ ghost }: { ghost: HanzoGhost }) {
           state={ghost.state}
           facing={ghost.facing}
           isHurt={false}
+          animFrame={2}
         />
       </div>
     </div>

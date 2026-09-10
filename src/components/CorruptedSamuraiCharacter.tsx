@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getImage } from '@/game/assetCache';
 
 /**
  * SHADOW OF THE RED MOON — CORRUPTED SAMURAI CHARACTER
@@ -88,33 +89,10 @@ export const SAMURAI_DEATH_FRAMES = [
   '/assets/sprites/enemies/corrupted-samurai/death/death_06.png',
 ] as const;
 
-// Preload all Corrupted Samurai frames once on module load
-if (typeof window !== 'undefined') {
-  [
-    ...SAMURAI_IDLE_FRAMES,
-    ...SAMURAI_WALK_FRAMES,
-    ...SAMURAI_CHASE_FRAMES,
-    ...SAMURAI_JUMP_FRAMES,
-    ...SAMURAI_ATTACK_FRAMES,
-    ...SAMURAI_DAMAGE_FRAMES,
-    ...SAMURAI_DEATH_FRAMES,
-    '/assets/sprites/enemies/corrupted-samurai/effects/slash_arc_01.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/slash_arc_02.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/slash_arc_03.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/impact_01.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/impact_02.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/dust_01.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/dust_02.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/blood_hit_spark.png',
-    '/assets/sprites/enemies/corrupted-samurai/effects/dark_energy.png',
-  ].forEach((src) => {
-    const img = new Image();
-    img.src = src;
-  });
-}
-
 export interface CorruptedSamuraiCharacterProps {
   state: 'idle' | 'patrol' | 'chase' | 'attack' | 'jump' | 'hurt' | 'dead' | 'spawn' | 'fly';
+  animFrame?: number;
+  attackFrame?: number;
   facing?: 1 | -1;
   isHurt?: boolean;
 }
@@ -129,10 +107,13 @@ const DEATH_DURATION_MS = 95;
 
 export function CorruptedSamuraiCharacter({
   state = 'idle',
+  animFrame,
+  attackFrame,
   facing = 1,
   isHurt = false,
 }: CorruptedSamuraiCharacterProps) {
   const [frameIndex, setFrameIndex] = useState(0);
+  const effectiveFrame = animFrame !== undefined ? animFrame : frameIndex;
 
   // Priority Mode: Death > Damage > Attack > Jump > Chase > Patrol > Idle
   const currentMode = state === 'dead'
@@ -159,6 +140,8 @@ export function CorruptedSamuraiCharacter({
   }, [currentMode]);
 
   useEffect(() => {
+    if (animFrame !== undefined) return;
+
     if (currentMode === 'idle') {
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => (prev + 1) % SAMURAI_IDLE_FRAMES.length);
@@ -227,7 +210,7 @@ export function CorruptedSamuraiCharacter({
       }, DEATH_DURATION_MS);
       return () => window.clearInterval(interval);
     }
-  }, [currentMode]);
+  }, [currentMode, animFrame]);
 
   const flip = facing === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
@@ -236,37 +219,43 @@ export function CorruptedSamuraiCharacter({
   let maxWidth = '72px';
 
   if (currentMode === 'death') {
-    const clampedIndex = Math.min(frameIndex, SAMURAI_DEATH_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, SAMURAI_DEATH_FRAMES.length - 1);
     currentSrc = SAMURAI_DEATH_FRAMES[clampedIndex];
     spriteHeight = '56px';
     maxWidth = '76px';
   } else if (currentMode === 'damage') {
-    const clampedIndex = Math.min(frameIndex, SAMURAI_DAMAGE_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, SAMURAI_DAMAGE_FRAMES.length - 1);
     currentSrc = SAMURAI_DAMAGE_FRAMES[clampedIndex];
     spriteHeight = '56px';
     maxWidth = '72px';
   } else if (currentMode === 'attack') {
-    const clampedIndex = Math.min(frameIndex, SAMURAI_ATTACK_FRAMES.length - 1);
+    const clampedIndex = attackFrame !== undefined ? Math.min(attackFrame, SAMURAI_ATTACK_FRAMES.length - 1) : Math.min(effectiveFrame, SAMURAI_ATTACK_FRAMES.length - 1);
     currentSrc = SAMURAI_ATTACK_FRAMES[clampedIndex];
     spriteHeight = '58px';
     maxWidth = '80px';
   } else if (currentMode === 'jump') {
-    const clampedIndex = Math.min(frameIndex, SAMURAI_JUMP_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, SAMURAI_JUMP_FRAMES.length - 1);
     currentSrc = SAMURAI_JUMP_FRAMES[clampedIndex];
     spriteHeight = '58px';
     maxWidth = '78px';
   } else if (currentMode === 'chase') {
-    currentSrc = SAMURAI_CHASE_FRAMES[frameIndex % SAMURAI_CHASE_FRAMES.length];
+    currentSrc = SAMURAI_CHASE_FRAMES[effectiveFrame % SAMURAI_CHASE_FRAMES.length];
     spriteHeight = '56px';
     maxWidth = '72px';
   } else if (currentMode === 'walk') {
-    currentSrc = SAMURAI_WALK_FRAMES[frameIndex % SAMURAI_WALK_FRAMES.length];
+    currentSrc = SAMURAI_WALK_FRAMES[effectiveFrame % SAMURAI_WALK_FRAMES.length];
     spriteHeight = '56px';
     maxWidth = '72px';
   } else {
-    currentSrc = SAMURAI_IDLE_FRAMES[frameIndex % SAMURAI_IDLE_FRAMES.length];
+    currentSrc = SAMURAI_IDLE_FRAMES[effectiveFrame % SAMURAI_IDLE_FRAMES.length];
     spriteHeight = '56px';
     maxWidth = '72px';
+  }
+
+  const cachedImg = getImage(currentSrc);
+  if (cachedImg && cachedImg.naturalHeight > 0) {
+    spriteHeight = `${Math.round(cachedImg.naturalHeight * 0.318)}px`;
+    maxWidth = `${Math.round(cachedImg.naturalWidth * 0.318) + 8}px`;
   }
 
   return (

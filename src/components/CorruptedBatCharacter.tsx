@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getImage } from '@/game/assetCache';
 
 /**
  * SHADOW OF THE RED MOON — CORRUPTED BAT CHARACTER
@@ -99,25 +100,10 @@ export const BAT_SPAWN_FRAMES = [
 
 export const MASTER_BAT_REFERENCE = '/assets/sprites/enemies/corrupted-bat/master.png' as const;
 
-// Preload all 6 Idle, 12 Fly, 8 Dive, 8 Claw, 12 Death, and 6 Spawn frames + Master once on module load
-if (typeof window !== 'undefined') {
-  [
-    ...BAT_IDLE_FRAMES,
-    ...BAT_FLY_FRAMES,
-    ...BAT_DIVE_FRAMES,
-    ...BAT_CLAW_FRAMES,
-    ...BAT_DEATH_FRAMES,
-    ...BAT_SPAWN_FRAMES,
-    MASTER_BAT_REFERENCE,
-  ].forEach((src) => {
-    const img = new Image();
-    img.src = src;
-  });
-}
-
 export interface CorruptedBatCharacterProps {
   state?: 'idle' | 'fly' | 'dive' | 'claw_attack' | 'chase' | 'patrol' | 'attack' | 'jump' | 'hurt' | 'dead' | 'spawn';
   attackType?: 'claw' | 'dive';
+  animFrame?: number;
   isMoving?: boolean;
   facing?: 1 | -1;
   isHurt?: boolean;
@@ -133,11 +119,13 @@ const SPAWN_FRAME_MS = 85;
 export function CorruptedBatCharacter({
   state = 'idle',
   attackType = 'claw',
+  animFrame,
   isMoving = false,
   facing = 1,
   isHurt = false,
 }: CorruptedBatCharacterProps) {
   const [frameIndex, setFrameIndex] = useState(0);
+  const effectiveFrame = animFrame !== undefined ? animFrame : frameIndex;
 
   // Determine sub-states
   const isSpawn = state === 'spawn';
@@ -170,8 +158,10 @@ export function CorruptedBatCharacter({
     }
   }, [currentMode]);
 
-  // Frame advance loop
+  // Frame advance loop (only active if engine does not supply animFrame)
   useEffect(() => {
+    if (animFrame !== undefined) return;
+
     if (currentMode === 'death') {
       const interval = window.setInterval(() => {
         setFrameIndex((prev) => {
@@ -233,28 +223,30 @@ export function CorruptedBatCharacter({
       }, IDLE_FRAME_MS);
       return () => window.clearInterval(interval);
     }
-  }, [currentMode]);
+  }, [currentMode, animFrame]);
 
   const flip = facing === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
   let currentSrc: string;
   if (currentMode === 'death') {
-    const clampedIndex = Math.min(frameIndex, BAT_DEATH_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, BAT_DEATH_FRAMES.length - 1);
     currentSrc = BAT_DEATH_FRAMES[clampedIndex];
   } else if (currentMode === 'spawn') {
-    const clampedIndex = Math.min(frameIndex, BAT_SPAWN_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, BAT_SPAWN_FRAMES.length - 1);
     currentSrc = BAT_SPAWN_FRAMES[clampedIndex];
   } else if (currentMode === 'claw') {
-    const clampedIndex = Math.min(frameIndex, BAT_CLAW_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, BAT_CLAW_FRAMES.length - 1);
     currentSrc = BAT_CLAW_FRAMES[clampedIndex];
   } else if (currentMode === 'dive') {
-    const clampedIndex = Math.min(frameIndex, BAT_DIVE_FRAMES.length - 1);
+    const clampedIndex = Math.min(effectiveFrame, BAT_DIVE_FRAMES.length - 1);
     currentSrc = BAT_DIVE_FRAMES[clampedIndex];
   } else if (currentMode === 'fly') {
-    currentSrc = BAT_FLY_FRAMES[frameIndex % BAT_FLY_FRAMES.length];
+    currentSrc = BAT_FLY_FRAMES[effectiveFrame % BAT_FLY_FRAMES.length];
   } else {
-    currentSrc = BAT_IDLE_FRAMES[frameIndex % BAT_IDLE_FRAMES.length];
+    currentSrc = BAT_IDLE_FRAMES[effectiveFrame % BAT_IDLE_FRAMES.length];
   }
+
+  getImage(currentSrc);
 
   return (
     <div

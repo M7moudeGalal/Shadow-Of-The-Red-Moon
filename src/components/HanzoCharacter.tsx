@@ -1,21 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Enemy, HanzoTelegraphType } from '@/game/types';
+import { getImage } from '@/game/assetCache';
 
 /**
  * SHADOW OF THE RED MOON — STORY GUARDIAN BOSS: HANZO (半蔵)
  * =========================================================
  * Guardian of the Ancient Portal to Tamashi no Shinden in Chinoike Jigoku.
  * Noticeably taller than the Ninja (approx 210–220cm vs 180cm, ~1.20x scale).
- * 
- * Animation Groups:
- * - IDLE (8 frames, 110ms cadence, loop)
- * - RUN (11 frames, 80ms cadence, loop)
- * - DASH (12 frames, 45ms cadence, single-play)
- * - SPIN ATTACK (20 frames, 40ms cadence, single-play)
- * - RISING ATTACK (18 frames, 45ms cadence, single-play)
- * - TELEPORT ATTACK (12 frames, 55ms cadence, single-play signature move)
- * - HURT (stagger / deflection reaction)
- * - DEAD (dissolution sequence)
  */
 
 export const HANZO_IDLE_FRAMES = [
@@ -163,29 +154,10 @@ export const HANZO_HIT_EFFECT = '/assets/sprites/enemies/hanzo/hit_effect.gif' a
 export const MASTER_HANZO_SPRITE = '/assets/sprites/enemies/hanzo/master.png' as const;
 export const HANZO_SPAWN_EFFECT = '/assets/sprites/enemies/hanzo/Spawn Hazon effect.gif' as const;
 
-// Preload all Hanzo assets once on module load
-if (typeof window !== 'undefined') {
-  [
-    ...HANZO_IDLE_FRAMES,
-    ...HANZO_RUN_FRAMES,
-    ...HANZO_DASH_FRAMES,
-    ...HANZO_SPIN_FRAMES,
-    ...HANZO_RISING_FRAMES,
-    ...HANZO_TELEPORT_FRAMES,
-    ...HANZO_JUMP_FRAMES,
-    ...HANZO_DAMAGE_FRAMES,
-    ...HANZO_DEATH_FRAMES,
-    HANZO_HIT_EFFECT,
-    MASTER_HANZO_SPRITE,
-    HANZO_SPAWN_EFFECT,
-  ].forEach((src) => {
-    const img = new Image();
-    img.src = src;
-  });
-}
-
 export interface HanzoCharacterProps {
   state: Enemy['state'];
+  animFrame?: number;
+  attackFrame?: number;
   facing?: 1 | -1;
   isHurt?: boolean;
   jumpFrame?: number;
@@ -198,6 +170,8 @@ export interface HanzoCharacterProps {
 
 export function HanzoCharacter({
   state,
+  animFrame,
+  attackFrame,
   facing = 1,
   isHurt = false,
   jumpFrame,
@@ -214,8 +188,6 @@ export function HanzoCharacter({
   if (state === 'dead') {
     return null;
   }
-
-  // 'spawn' state now falls through to idle rendering (spawn effect removed)
 
   // Determine active frame group and timing cadence
   let frames: readonly string[] = HANZO_IDLE_FRAMES;
@@ -281,8 +253,10 @@ export function HanzoCharacter({
     }
   }, [state]);
 
-  // Frame ticker
+  // Frame ticker (only active if engine does not supply animFrame)
   useEffect(() => {
+    if (animFrame !== undefined) return;
+
     const timer = setInterval(() => {
       setFrameIndex((prev) => {
         if (prev + 1 >= frames.length) {
@@ -293,17 +267,46 @@ export function HanzoCharacter({
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [frames, intervalMs, loop]);
+  }, [frames, intervalMs, loop, animFrame]);
 
-  const fallbackFrame = frames[Math.min(frameIndex, frames.length - 1)] || frames[0];
-  let currentFrame = fallbackFrame;
-  if (state === 'jump' && jumpFrame !== undefined && jumpFrame >= 0 && jumpFrame < HANZO_JUMP_FRAMES.length) {
-    currentFrame = HANZO_JUMP_FRAMES[jumpFrame];
-  } else if (state === 'hurt' && damageFrame !== undefined && damageFrame >= 0 && damageFrame < HANZO_DAMAGE_FRAMES.length) {
-    currentFrame = HANZO_DAMAGE_FRAMES[damageFrame];
-  } else if (state === 'death' && deathFrame !== undefined && deathFrame >= 0 && deathFrame < HANZO_DEATH_FRAMES.length) {
-    currentFrame = HANZO_DEATH_FRAMES[deathFrame];
+  // Determine current frame with strict priority and death hold frame integrity
+  let currentFrame: string;
+  if (state === 'death') {
+    // Final cutscene hold on death_hanzo_4 (index 3) unless deathFrame specifies continuation
+    const dFrame = deathFrame !== undefined ? Math.min(deathFrame, HANZO_DEATH_FRAMES.length - 1) : 3;
+    currentFrame = HANZO_DEATH_FRAMES[dFrame];
+  } else if (state === 'hurt') {
+    const dFrame = damageFrame !== undefined ? Math.min(damageFrame, HANZO_DAMAGE_FRAMES.length - 1) : 0;
+    currentFrame = HANZO_DAMAGE_FRAMES[dFrame];
+  } else if (state === 'jump') {
+    const jFrame = jumpFrame !== undefined ? Math.min(jumpFrame, HANZO_JUMP_FRAMES.length - 1) : 0;
+    currentFrame = HANZO_JUMP_FRAMES[jFrame];
+  } else if (state === 'spin_attack') {
+    const sFrame = attackFrame !== undefined ? Math.min(attackFrame, HANZO_SPIN_FRAMES.length - 1) : (animFrame !== undefined ? animFrame % HANZO_SPIN_FRAMES.length : frameIndex % HANZO_SPIN_FRAMES.length);
+    currentFrame = HANZO_SPIN_FRAMES[sFrame];
+  } else if (state === 'rising_attack') {
+    const rFrame = attackFrame !== undefined ? Math.min(attackFrame, HANZO_RISING_FRAMES.length - 1) : (animFrame !== undefined ? animFrame % HANZO_RISING_FRAMES.length : frameIndex % HANZO_RISING_FRAMES.length);
+    currentFrame = HANZO_RISING_FRAMES[rFrame];
+  } else if (state === 'dash') {
+    const dFrame = animFrame !== undefined ? Math.min(animFrame, HANZO_DASH_FRAMES.length - 1) : Math.min(frameIndex, HANZO_DASH_FRAMES.length - 1);
+    currentFrame = HANZO_DASH_FRAMES[dFrame];
+  } else if (state === 'teleport_attack') {
+    const tFrame = animFrame !== undefined ? Math.min(animFrame, HANZO_TELEPORT_FRAMES.length - 1) : Math.min(frameIndex, HANZO_TELEPORT_FRAMES.length - 1);
+    currentFrame = HANZO_TELEPORT_FRAMES[tFrame];
+  } else if (state === 'chase' || state === 'patrol') {
+    const rFrame = animFrame !== undefined ? animFrame % HANZO_RUN_FRAMES.length : frameIndex % HANZO_RUN_FRAMES.length;
+    currentFrame = HANZO_RUN_FRAMES[rFrame];
+  } else {
+    const iFrame = animFrame !== undefined ? animFrame % HANZO_IDLE_FRAMES.length : frameIndex % HANZO_IDLE_FRAMES.length;
+    currentFrame = HANZO_IDLE_FRAMES[iFrame];
   }
+
+  // Consistent character scale calculation relative to raw image pixel dimensions
+  const cachedImg = getImage(currentFrame);
+  const natH = (cachedImg && cachedImg.naturalHeight > 0) ? cachedImg.naturalHeight : 378;
+  const natW = (cachedImg && cachedImg.naturalWidth > 0) ? cachedImg.naturalWidth : 350;
+  const spriteH = Math.round(natH * 0.217);
+  const spriteW = Math.round(natW * 0.217);
 
   const isTelegraphing = Boolean(telegraph && telegraph !== 'none' && state !== 'death' && !isHurt);
   const teleportProgress = isTelegraphing && telegraph === 'teleport'
@@ -343,13 +346,21 @@ export function HanzoCharacter({
         filter: filterStyle,
         opacity: teleportOpacity,
         transition: isTelegraphing ? 'filter 0.08s ease, transform 0.1s ease' : 'filter 0.1s ease',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
       }}
     >
       <img
         src={currentFrame}
         alt="Hanzo Boss"
-        className="w-full h-full object-contain pointer-events-none select-none"
+        className="pointer-events-none select-none"
         style={{
+          width: `${spriteW}px`,
+          height: `${spriteH}px`,
+          maxWidth: 'none',
+          maxHeight: 'none',
+          objectFit: 'contain',
           objectPosition: 'bottom center',
           imageRendering: 'auto',
           display: 'block',
